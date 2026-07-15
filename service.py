@@ -13,15 +13,12 @@ made by ismoiloff
 """
 
 
+import json
 import os
-import platform
-import subprocess
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
-from typing import Optional
-import json
 
 from solver import solve
 
@@ -42,23 +39,6 @@ _count_lock = threading.Lock()
 class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
     """Handle each request in its own thread so solves don't block each other."""
     daemon_threads = True
-
-
-def _ensure_display() -> Optional[subprocess.Popen]:
-    """On Linux headless servers, start a virtual display so Chrome can run."""
-    if platform.system() != "Linux":
-        return None
-    if os.environ.get("DISPLAY"):
-        return None
-    xvfb = subprocess.Popen(
-        ["Xvfb", ":99", "-screen", "0", "1280x900x24"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    os.environ["DISPLAY"] = ":99"
-    time.sleep(0.5)
-    print("[service] started Xvfb on :99")
-    return xvfb
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -140,9 +120,9 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    xvfb_proc = _ensure_display()
     server = ThreadedHTTPServer(("0.0.0.0", PORT), Handler)
     print(f"[service] Turnstile solver service running on http://0.0.0.0:{PORT}")
+    print("[service] SeleniumBase CDP browser enabled (true headless by default)")
     print(f"[service] worker pool: {MAX_WORKERS} concurrent Chrome instances "
           f"(set MAX_WORKERS env var to change)")
     try:
@@ -150,5 +130,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print("\n[service] shutting down")
         server.server_close()
-        if xvfb_proc:
-            xvfb_proc.terminate()

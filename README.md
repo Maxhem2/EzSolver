@@ -2,10 +2,10 @@
 
 <h1>⚡ EzSolver</h1>
 
-<p><strong>Fast, cross-platform Cloudflare Turnstile solver powered by a real browser.</strong><br/>
+<p><strong>Fast, cross-platform Cloudflare Turnstile solver powered by headless Chrome.</strong><br/>
 No paid APIs. No third-party services. Just Python and Chrome.</p>
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=flat-square&logo=python)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=flat-square&logo=python)](https://python.org)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey?style=flat-square)]()
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)]()
 [![Made by](https://img.shields.io/badge/Made%20by-Ismoiloff-orange?style=flat-square)](https://github.com/ismoiloffS)
@@ -16,21 +16,23 @@ No paid APIs. No third-party services. Just Python and Chrome.</p>
 
 ## How it works
 
-EzSolver injects a Turnstile widget directly into the target page using a real Chrome browser via [nodriver](https://github.com/ultrafunkamsterdam/nodriver). Because it runs in a genuine browser with a persistent profile, Cloudflare's fingerprinting sees a real user — no token farms, no captcha services needed.
+EzSolver injects a Turnstile widget directly into the target page using Chrome through [SeleniumBase CDP Mode](https://seleniumbase.io/examples/cdp_mode/ReadMe/). It uses SeleniumBase's asynchronous CDP driver, so page scripts and mouse input work without a visible browser window.
 
 - **Invisible widgets** resolve automatically within seconds
 - **Managed (checkbox) widgets** are clicked with human-like mouse movement
-- On Linux servers, a virtual display (Xvfb) is started automatically — no `xvfb-run` needed
-- Chrome path and profile directory are auto-detected per OS, with env var overrides
+- **True headless Chrome is the default** on Windows and Linux
+- Optional Xvfb compatibility mode is available on Linux for sites that behave differently in true headless mode
+- Every solve uses an isolated temporary Chrome profile, including concurrent service workers
+- Chrome path and profile parent directory are auto-detected per OS, with environment variable overrides
 
 ---
 
 ## Requirements
 
-- Python **3.8+**
+- Python **3.9+**
 - Google Chrome installed
-- `nodriver` Python package
-- **Linux only:** `Xvfb` (for headless servers)
+- `seleniumbase` Python package (the tested version is pinned in `requirements.txt`)
+- **Optional on Linux:** `Xvfb` for compatibility mode
 
 ---
 
@@ -43,19 +45,20 @@ git clone https://github.com/ismoiloffS/EzSolver.git
 cd EzSolver
 ```
 
-**2. Install the Python dependency**
+**2. Install the pinned Python dependency**
 
 ```bash
-pip install nodriver
+pip install -r requirements.txt
 ```
 
-**3. Linux headless servers only — install Xvfb**
+True headless mode needs no display server. To use the optional Linux Xvfb
+compatibility mode, install Xvfb:
 
 ```bash
 sudo apt install xvfb
 ```
 
-> Windows users: nothing extra needed, Chrome runs normally.
+> Windows users: nothing extra is needed; Chrome runs headlessly by default.
 
 ---
 
@@ -213,13 +216,18 @@ For truly massive scale (thousands of concurrent solves), run **multiple service
 | Environment variable | Default | Description |
 |----------------------|---------|-------------|
 | `CHROME_PATH` | auto-detected | Path to your Chrome executable |
-| `TS_PROFILE_DIR` | `%TEMP%\ts_profile` / `/tmp/ts_profile` | Persistent Chrome profile directory |
+| `TS_PROFILE_DIR` | system temp + `ezsolver_profiles` | Parent directory for isolated temporary worker profiles |
+| `TRUE_HEADLESS` | `1` | Run Chrome in true headless mode (`0` enables a visible browser) |
+| `USE_XVFB` | `0` | On Linux, use headed Chrome under Xvfb instead of true headless mode |
 | `PORT` | `8191` | Port the service listens on |
 | `MAX_WORKERS` | `4` | Max concurrent Chrome instances |
 
-**Example:**
+**Examples:**
 ```bash
 MAX_WORKERS=8 PORT=9000 python service.py
+
+# Linux compatibility fallback for a site that fails in true headless mode
+USE_XVFB=1 python service.py
 ```
 
 ---
@@ -243,8 +251,8 @@ EzSolver/
 **Timeout / token not received**
 > The target site may be serving a harder challenge. Try increasing the timeout: `python clientsend.py <key> <url> 90`
 
-**Linux: Xvfb not found**
-> `sudo apt install xvfb`
+**A widget behaves differently in true headless mode (Linux)**
+> Install Xvfb with `sudo apt install xvfb`, then start with `USE_XVFB=1 python service.py`.
 
 ---
 
